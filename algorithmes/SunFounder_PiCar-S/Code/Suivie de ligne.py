@@ -1,11 +1,20 @@
 #!/usr/bin/env python
-
+'''
+**********************************************************************
+Ce code est en construction, veuillez modifier les imports pour correspondre à l'environnement du picar ou hors picar
+**********************************************************************
+'''
 
 from SunFounder_Line_Follower import Line_Follower
-from picar import front_wheels
-from picar import back_wheels
+#In Picar
+#from picar import front_wheels
+#from picar import back_wheels
+#import picar
 import time
-import picar
+#Hors Picar
+import SunFounder_PiCar.picar as picar
+from SunFounder_PiCar.picar import front_wheels
+from SunFounder_PiCar.picar import back_wheels
 
 picar.setup()
 
@@ -39,75 +48,6 @@ def straight_run():
 def setup():
     if calibrate:
         cali()
-
-def main():
-    global turning_angle
-    off_track_count = 0
-    #bw.speed = forward_speed
-    time.sleep(20)
-    changement_vitesse(forward_speed)
-
-    a_step = 3
-    b_step = 10
-    c_step = 30
-    d_step = 45
-    bw.forward()
-    while True:
-        lt_status_now = lf.read_digital()
-        print(lt_status_now)
-        # Angle calculate
-        if  lt_status_now == [0,0,1,0,0]:
-            step = 0    
-        elif lt_status_now == [0,1,1,0,0] or lt_status_now == [0,0,1,1,0]:
-            step = a_step
-        elif lt_status_now == [0,1,0,0,0] or lt_status_now == [0,0,0,1,0]:
-            step = b_step
-        elif lt_status_now == [1,1,0,0,0] or lt_status_now == [0,0,0,1,1]:
-            step = c_step
-        elif lt_status_now == [1,0,0,0,0] or lt_status_now == [0,0,0,0,1]:
-            step = d_step
-
-        # Direction calculate
-        if  lt_status_now == [0,0,1,0,0]:
-            off_track_count = 0
-            fw.turn(90)
-        # turn right
-        elif lt_status_now in ([0,1,1,0,0],[0,1,0,0,0],[1,1,0,0,0],[1,0,0,0,0]):
-            off_track_count = 0
-            turning_angle = int(90 - step)
-        # turn left
-        elif lt_status_now in ([0,0,1,1,0],[0,0,0,1,0],[0,0,0,1,1],[0,0,0,0,1]):
-            off_track_count = 0
-            turning_angle = int(90 + step)
-        elif lt_status_now == [0,0,0,0,0]:
-            off_track_count += 1
-            if off_track_count > max_off_track_count:
-                if turning_angle < 90:
-                    tmp_angle = -(turning_angle - 90) + 90
-                    print(turning_angle)
-                elif turning_angle > 90:
-                    tmp_angle = (turning_angle-90)/abs(90-turning_angle)
-                    print(turning_angle)
-                    
-                tmp_angle *= fw.turning_max
-                
-                bw.speed = backward_speed
-                bw.backward()
-                fw.turn(tmp_angle)
-                
-                lf.wait_tile_center()
-                bw.stop()
-
-                fw.turn(turning_angle)
-                time.sleep(0.2)
-                bw.speed = forward_speed
-                bw.forward()
-                time.sleep(0.2)
-        else:
-            off_track_count = 0
-    
-        fw.turn(turning_angle)
-        time.sleep(delay)
 
 def cali():
     references = [0, 0, 0, 0, 0]
@@ -151,10 +91,6 @@ def changement_vitesse(vitesse_cible):
     actual_speed = bw._speed
     if actual_speed > vitesse_cible:
         print("on doit ralentir")
-        #différence avec la vitesse cible
-        delta = vitesse_cible - actual_speed
-        #taille des incréments 
-        nb_step = 100
         #applique décélération
         while actual_speed != vitesse_cible +1:
             actual_speed = bw._speed
@@ -164,10 +100,6 @@ def changement_vitesse(vitesse_cible):
         print("fin accélération")
     elif actual_speed < vitesse_cible:
         print("on doit accelerer")
-        #différence avec la vitesse cible
-        delta = vitesse_cible - actual_speed
-        #taille des incréments 
-        nb_step = 100
         #applique accélération
         while actual_speed != vitesse_cible -1:
             actual_speed = bw._speed
@@ -177,7 +109,87 @@ def changement_vitesse(vitesse_cible):
         print("fin accélération")
     else:
         print("vitesse cible déjà atteinte")
-    
+
+def offtrack(off_track_count):
+    tmp_angle = 0
+    if off_track_count > max_off_track_count:
+        if turning_angle < 90:
+            tmp_angle = -(turning_angle - 90) + 90
+            print(turning_angle)
+        elif turning_angle > 90:
+            tmp_angle = (turning_angle - 90) / abs(90 - turning_angle)
+            print(turning_angle)
+        tmp_angle *= fw.turning_max
+
+        bw.speed = backward_speed
+        bw.backward()
+        fw.turn(tmp_angle)
+
+        lf.wait_tile_center()
+        bw.stop()
+
+        fw.turn(turning_angle)
+        time.sleep(0.2)
+        bw.speed = forward_speed
+        bw.forward()
+        time.sleep(0.2)
+
+def calcule_angle():
+    a_step = 3
+    b_step = 10
+    c_step = 30
+    d_step = 45
+
+    lt_status_now = lf.read_digital()
+    print(lt_status_now)
+    # Calcule de l'angle d'ajustement
+    if lt_status_now == [0, 0, 1, 0, 0]:
+        step = 0
+    elif lt_status_now == [0, 1, 1, 0, 0] or lt_status_now == [0, 0, 1, 1, 0]:
+        step = a_step
+    elif lt_status_now == [0, 1, 0, 0, 0] or lt_status_now == [0, 0, 0, 1, 0]:
+        step = b_step
+    elif lt_status_now == [1, 1, 0, 0, 0] or lt_status_now == [0, 0, 0, 1, 1]:
+        step = c_step
+    elif lt_status_now == [1, 0, 0, 0, 0] or lt_status_now == [0, 0, 0, 0, 1]:
+        step = d_step
+    return lt_status_now, step
+
+def suivie_ligne(off_track_count):
+    lt_status_now, step = calcule_angle()
+    # Suivi de la trajectoire suiveur de ligne
+    if lt_status_now == [0, 0, 1, 0, 0]:
+        off_track_count = 0
+        fw.turn(90)
+    # Ajustement vers la droite
+    elif lt_status_now in ([0, 1, 1, 0, 0], [0, 1, 0, 0, 0], [1, 1, 0, 0, 0], [1, 0, 0, 0, 0]):
+        off_track_count = 0
+        turning_angle = int(90 - step)
+    # Ajustement vers la gauche
+    elif lt_status_now in ([0, 0, 1, 1, 0], [0, 0, 0, 1, 0], [0, 0, 0, 1, 1], [0, 0, 0, 0, 1]):
+        off_track_count = 0
+        turning_angle = int(90 + step)
+    # Si on sort du parcours
+    elif lt_status_now == [0, 0, 0, 0, 0]:
+        off_track_count += 1
+        offtrack(off_track_count)
+    else:
+        off_track_count = 0
+    fw.turn(turning_angle)
+    time.sleep(delay)
+
+def main():
+    #Armement du véhicule
+    global turning_angle
+    off_track_count = 0
+    #Lancement après 20 secondes
+    time.sleep(20)
+    changement_vitesse(forward_speed)
+    bw.forward()
+    #Activité normale du véhicule
+    while True:
+        suivie_ligne(off_track_count)
+
 
 if __name__ == '__main__':
     try:
