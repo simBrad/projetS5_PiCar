@@ -30,6 +30,8 @@ bpy.ops.mesh.primitive_cube_add(
     scale=(car_width, car_length, car_height)
 )
 
+bpy.context.active_object.name = 'Body'
+
 bpy.ops.mesh.primitive_cylinder_add(
         radius=wheel_radius+0.2,
         enter_editmode=False,
@@ -40,7 +42,7 @@ bpy.ops.mesh.primitive_cylinder_add(
 
 objects = bpy.data.objects
 
-cube = objects['Cube']
+cube = objects['Body']
 cylinder1 = objects['Cylinder']
 
 bool_one = cube.modifiers.new(type="BOOLEAN", name="bool 1")
@@ -86,17 +88,49 @@ for i in range (0,2):
     )
 
 # -----------------------------------------------------------------------------
+pebble_cup_height = 5
+pebble_cup_width = 5
+pebble_cup_length = 5
+pebble_radius = 1.5/2
 
+sphere_extrusion_depth = 0.20
+sphere_extrusion_radius = 14
 
-marble_support_height = 2
-marble_support_width = 7
-marble_support_length = 7
+bpy.ops.mesh.primitive_uv_sphere_add(
+    radius=sphere_extrusion_radius,
+    enter_editmode=False,
+    align='WORLD',
+    location=(0, pebble_cup_length/2, wheel_radius+car_height/2+pebble_cup_height+sphere_extrusion_radius-sphere_extrusion_depth),
+    scale=(1, 1, 1)
+)
+bpy.context.active_object.name = 'sphere_extrusion'
 
 bpy.ops.mesh.primitive_cube_add(
     size=1,
-    location=(0, car_length/4, wheel_radius*2+1),
-    scale=(marble_support_width, marble_support_length, marble_support_height)
+    enter_editmode=False,
+    align='WORLD',
+    location=(0, pebble_cup_length/2, wheel_radius+car_height/2+pebble_cup_height/2),
+    scale=(pebble_cup_width, pebble_cup_length, pebble_cup_height)
 )
+bpy.context.active_object.name = 'pebble_cup'
+
+# Make sphere_extrusion rigid
+bpy.ops.rigidbody.object_add()
+bpy.context.object.rigid_body.type = 'PASSIVE'
+bpy.context.object.rigid_body.kinematic = True
+bpy.context.object.rigid_body.collision_shape = 'MESH'
+bpy.context.object.rigid_body.mesh_source = 'FINAL'
+bpy.context.object.rigid_body.friction = 0.5
+
+# Extrude the pebble_cub
+bpy.ops.object.modifier_add(type='BOOLEAN')
+bpy.context.object.modifiers["Boolean"].object = bpy.data.objects["sphere_extrusion"]
+bpy.ops.object.modifier_apply(modifier="Boolean")
+
+# Delete the sphere_extrusion
+bpy.ops.object.select_all(action='DESELECT')
+bpy.data.objects['sphere_extrusion'].select_set(True)
+bpy.ops.object.delete()
 
 # -----------------------------------------------------------------------------
 
@@ -118,6 +152,7 @@ bpy.ops.mesh.primitive_cylinder_add(
     scale=(1, 1, sensor_width),
     rotation=(90*np.pi/180, 0, 0)
 )
+bpy.context.active_object.name = 'distance_sensor'
 
 # -----------------------------------------------------------------------------
 
@@ -132,6 +167,7 @@ bpy.ops.mesh.primitive_cube_add(
     scale=(line_sensor_width, line_sensor_length, line_sensor_height),
 )
 
+
 # -----------------------------------------------------------------------------
 
 
@@ -142,6 +178,9 @@ for i in range(0, 5):
         scale=(1, 1, sensor_width),
         rotation=(0, 0, 0)
     )
+    if i == 2:
+        bpy.context.active_object.name = 'capteur_centrale'
+
 
 #---------------------------------------------------------------------------------
 
@@ -152,3 +191,15 @@ cylinder1.select_set(True)
 cylinder.select_set(True)
 bpy.ops.object.delete()
 
+capteur_ligne_centre = objects['capteur_centrale']
+
+bpy.context.scene.cursor.location = [capteur_ligne_centre.location.x, capteur_ligne_centre.location.y, capteur_ligne_centre.location.z]
+for obj in car.all_objects:
+    obj.select_set(True)
+bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='MEDIAN')
+    
+# car = bpy.data.collections['car_coll']
+# bpy.context.view_layer.objects.active = bpy.data.objects["Cube"]
+# for obj in car.all_objects:
+#     obj.select_set(True)
+# bpy.ops.object.join()
